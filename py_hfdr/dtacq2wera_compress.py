@@ -19,6 +19,50 @@ import sys
 import numpy as np
 from scipy.io import loadmat, savemat
 
+
+# ----------------------------------------------
+# local functions (may rethink)
+
+def load_map(IQORDER):
+    ''' Make map for channel remapping '''
+    # global IQORDER
+    # switch IQORDER
+    if IQORDER == 'norm':
+        IQCHAN=[ones(8,1); 2*ones(8,1); ones(8,1); 2*ones(8,1)];
+    elif IQORDE == 'swap':
+        IQCHAN=[2*ones(8,1); ones(8,1); 2*ones(8,1); ones(8,1)];
+    elif IQORDER == 'radcelf':
+        IQCHAN=reshape([ones(1,8); 2*ones(1,8)],8*2,1);
+        DDS_OUT=  [(1:8).T (1:8).T]
+    else:
+        raise ValueError('Incorrect choice for IQORDER')
+
+    MAP = zeros(8*2,3)
+    MAP[:, 0] = [1:8*2]
+    MAP[:, 1] = DDS_OUT # not sure, as var only exists in one cond
+    MAP[:, 2] = IQCHAN
+    return MAP
+
+
+def chirp_compress(chirp_in, compression_factor):
+    '''window, decimate and unapply window to chirp'''
+    d = np.max(size(chirp_in))
+    w = scipy.signal.windows.blackmanharris(d).T
+    w1 = scipy.windows.blackmanharris(np.ceil(d / compression_factor)).T
+    wc = chirp_in.*w
+    dc = scipy.signal.decimate(wc, compression_factor)
+    return dc./w1
+
+
+def chirp_prep(chirp_in, len_end, SHIFT, SHIFT_POS):
+    '''global SHIFT SHIFT_POS'''
+    d = length(chirp_in)
+    start_spot = (d - len_end) / 2 + 1
+    end_spot = start_spot + len_end - 1
+    chirp_int = chirp_in / (2**SHIFT)
+    return np.int16(chirp_int[start_spot:end_spot])
+
+
 # ----------------------------
 # Read in params file (this input needs change, args to script or env vars)
 # TOD_O need error (in arg) handling for the input files
