@@ -48,7 +48,7 @@ def load_map(IQORDER):
     else:
         raise ValueError('Incorrect choice for IQORDER')
 
-    map = np.zeros((8 * 2, 3))
+    map = np.zeros((8 * 2, 3), dtype=np.int)
     map[:, 0] = np.r_[1:8 * 2 + 1]
     map[:, 1] = DDS_OUT.T.ravel()  # will break, as var only exists in one cond
     map[:, 2] = IQCHAN
