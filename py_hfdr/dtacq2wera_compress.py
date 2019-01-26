@@ -100,6 +100,8 @@ parser.add_argument("header_file", type=str,
                     help="input header file (sitename.hdr) w/ path")
 parser.add_argument("out_filename", type=str,
                     help="output file name w/o ext (.bnr .mat and .npz)")
+parser.add_argument("-c", "--config_file", action="store", default=None,
+                    type=str, help="config file for processing variables")
 args = parser.parse_args()
 
 # do the checks that files exist
