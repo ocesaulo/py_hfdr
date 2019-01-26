@@ -259,5 +259,5 @@ fi.close()
 # Write the output mat (npz) file
 
 np.savez_compressed(outfilename + '.npz', wera=wera, proc_configs=site_conf)
+savemat(outfilename + '.mat', data={'wera': wera, 'proc_configs': site_conf})
 print("--- %s seconds ---" % (time.time() - start_time))
-# savemat(outfilename + '.mat', wera=wera)
