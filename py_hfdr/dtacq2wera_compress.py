@@ -60,7 +60,9 @@ def chirp_compress(chirp_in, compression_factor):
 
     d = np.max(chirp_in.shape)
     w = signal.windows.blackmanharris(d).T
-    w1 = signal.windows.blackmanharris(np.ceil(d / compression_factor)).T
+    w1 = signal.windows.blackmanharris(
+                                       np.int(np.ceil(d / compression_factor))
+                                       ).T
     wc = chirp_in * w
     dc = signal.decimate(wc, compression_factor)
     return dc / w1
@@ -232,8 +234,10 @@ for ichirp in range(0, NCHIRP):
         sdata[ichan, :] = chirp_compress(data[ichan, :], OVER)
         datac[ichan, :] = chirp_compress(sdata[ichan, :], COMP_FAC)
         # reorder channels, shift bits, and move to int16 data
-        wera1[map[ichan, 2], :, map[ichan, 1]] = chirp_prep(sdata[ichan, :], MT)
-        werac[map[ichan, 2], :, map[ichan, 1]] = chirp_prep(datac[ichan, :], MTC)
+        wera1[map[ichan, 2], :, map[ichan, 1]] = chirp_prep(sdata[ichan, :],
+                                                            MT, SHIFT, SHIFT_POS)
+        werac[map[ichan, 2], :, map[ichan, 1]] = chirp_prep(datac[ichan, :],
+                                                            MTC, SHIFT, SHIFT_POS)
     wera[..., ichirp] = werac  # store compressed data in 'wera'
     fo.write(wera1)  # write out data to RAW bin output file
 fo.close()
