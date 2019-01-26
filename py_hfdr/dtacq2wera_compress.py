@@ -158,7 +158,7 @@ SHIFT = 18
 HEADTAG = '2048 SAMPLES   '  # part of the header necessary
 IQORDER = 'radcelf'  # ordering of I and Q channels; use 'norm' or 'swap'
 
-MTL = MT + SHIFT_POS / OVER
+MTL = MT + SHIFT_POS // OVER  # need care that this being int and rounded right
 
 MTCL = np.int(np.ceil(MTL / COMP_FAC))
 MTC = np.int(np.ceil(MT / COMP_FAC))
