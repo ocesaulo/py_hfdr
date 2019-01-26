@@ -221,10 +221,10 @@ for ichirp in range(1, NCHIRP):
     data = data.reshape((NCHAN * IQ, MT * OVER + SHIFT_POS)).astype(np.float64)
 
     # initialize variables per chirp
-    sdata = np.float64(np.zeros(NCHAN * IQ, MTL))
-    datac = np.float64(np.zeros(NCHAN * IQ, MTCL))
-    wera1 = np.int16(np.zeros(IQ, MT, NANT))
-    werac = np.int16(np.zeros(IQ, MTC, NANT))
+    sdata = np.float64(np.zeros((NCHAN * IQ, MTL)))
+    datac = np.float64(np.zeros((NCHAN * IQ, MTCL)))
+    wera1 = np.int16(np.zeros((IQ, MT, NANT)))
+    werac = np.int16(np.zeros((IQ, MTC, NANT)))
 
     # manipulate data for each channel
     for ichan in range(1, NANT * IQ):
