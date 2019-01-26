@@ -213,7 +213,7 @@ fo.write((HEADTAG + timed + header).encode('ascii'))  # not sure it will work
 
 wera = np.zeros((IQ, MTC, NANT, NCHIRP), dtype=np.int16)
 
-for ichirp in range(1, NCHIRP):
+for ichirp in range(0, NCHIRP):
 
     #  move back a bit in file to extend chirp so filter works cleanly
     fi.seek(-4 * NCHAN * IQ * SHIFT_POS, 1)
@@ -227,13 +227,13 @@ for ichirp in range(1, NCHIRP):
     werac = np.int16(np.zeros((IQ, MTC, NANT)))
 
     # manipulate data for each channel
-    for ichan in range(1, NANT * IQ):
+    for ichan in range(0, NANT * IQ):
         # window, decimate, and unwindow
         sdata[ichan, :] = chirp_compress(data[ichan, :], OVER)
         datac[ichan, :] = chirp_compress(sdata[ichan, :], COMP_FAC)
         # reorder channels, shift bits, and move to int16 data
-        wera1[map[ichan, 3], :, map[ichan, 2]] = chirp_prep(sdata[ichan, :], MT)
-        werac[map[ichan, 3], :, map[ichan, 2]] = chirp_prep(datac[ichan, :], MTC)
+        wera1[map[ichan, 2], :, map[ichan, 1]] = chirp_prep(sdata[ichan, :], MT)
+        werac[map[ichan, 2], :, map[ichan, 1]] = chirp_prep(datac[ichan, :], MTC)
     wera[..., ichirp] = werac  # store compressed data in 'wera'
     fo.write(wera1)  # write out data to RAW bin output file
 fo.close()
