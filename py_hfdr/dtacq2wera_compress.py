@@ -1,30 +1,36 @@
+#!/usr/bin/env python3
 """
- Converts dta file to RAW file and compressed mat file; Originally coded as
- function
+ Converts dta file to RAW file and compressed mat and npz files. Change inputs
+ and variables to adapt to radar site configurations.
 
- change parameters in beginning to suit site; TODO: parameter input separate
+ usage: $python dtacq2wera_compress ./file.dta ./params.mat ./201009090000_site.hdr
+         ./site.hdr output_filename
 
- Formally ran as:
- $matlab -nodisplay -r "addpath('/
- pathtofunction');dtacq2wera('$infile','$rawfile','$outfile','$timefile',/
- '$headfile');quit;"
+ TODO: parameter input must be separate, need to avoid hard coded radar site
+ config. vars: USE A CLASS and import a module that contains it; class to be
+ partially filled from the params file.
+ Currently only radcelf option works (bug): ask Xavier why
 
- TODO: This will probably turn into a script (bin); input will be a raw file,
- a params file, a header file and others as needed
+ TODO: This will probably turn into an excutable script (bin); input will be a
+ raw .dta file, a params file, a header file and others as needed. Output will
+ be 3 files: a raw binary .bnr, a matlab file .mat and numpy file .npz.
 
- Adapted to radcelf
+ TODO: Improve error handling in argument passing and checks. Currently if the
+ output files exist abort.
 
+ Author: Saulo M. Soares
 """
 
 import os
-import sys
+import argparse
+# import sys
 import numpy as np
 from scipy import signal
 from scipy.io import loadmat, savemat
 
 
 # ----------------------------------------------
-# local functions (may rethink)
+# local functions (may rethink and go into a module to be imported)
 
 def load_map(IQORDER):
     ''' Make map for channel remapping '''
@@ -71,30 +77,67 @@ def chirp_prep(chirp_in, len_end, SHIFT, SHIFT_POS):
 
 
 # ----------------------------
-# Read in params file (this input needs change, args to script or env vars)
-# TOD_O need error (in arg) handling for the input files
+# Read in input files
 
-path_to_hfdr = '/Users/saulo/Work/Projects/Software/hfdr_tools'
+parser = argparse.ArgumentParser(description=("Converts .dta file to " +
+                                              ".bnr, .mat and .npz files."),
+                                 epilog=("usage: dtacq2wera_compress " +
+                                         "./file.dta ./params.mat " +
+                                         "./YYYYMMDDHHMM_sitename.hdr " +
+                                         "./sitename.hdr " +
+                                         "YYYYMMDDHHMM_sitename")
+                                 )
+parser.add_argument("dta_file", type=str, help="input .dta file w/ path")
+parser.add_argument("params_file", type=str,
+                    help="input params file (.mat) w/ full path")
+parser.add_argument("time_file", type=str,
+                    help="input time file (TIMESTAMP_sitename.hdr) w/ path")
+parser.add_argument("header_file", typ=str,
+                    help="input header file (sitename.hdr) w/ path")
+parser.add_argument("out_filename", type=str,
+                    help="output file name w/o ext (.bnr .mat and .npz)")
+args = parser.parse_args()
 
-dta_in_file = 'test_data/20183412100_jbo.dta'
-dta_filein = os.path.join(path_to_hfdr, dta_in_file)
+# do the checks that files exist
 
-params_hfdr_infile = 'params_jbo.mat'
-params_path_infile = os.path.join(path_to_hfdr, params_hfdr_infile)
+if os.path.isfile(args.dta_file):
+    print("~ Input file is: {}".format(args.dta_file))
+    dta_filein = args.dta_file
+else:
+    raise ValueError('Input .dta file not found!')
 
-time_infile = 'test_data/20183412100_jbo.hdr'  # unsure if this the right file
-time_path_infile = os.path.join(path_to_hfdr, time_infile)
+if os.path.isfile(args.params_file):
+    print("~ Parameter file is: {}".format(args.params_file))
+    params_filein = args.params_file
+else:
+    raise ValueError('Input params file not found!')
 
-header_infile = 'test_data/jbo.hdr'  # unsure if this the right file
-header_path_infile = os.path.join(path_to_hfdr, header_infile)
+if os.path.isfile(args.time_file):
+    print("~ Input time file is: {}".format(args.time_file))
+    time_filein = args.time_file
+else:
+    raise ValueError('Input time file (.hdr) not found!')
 
-rawout_filename = '../data/sometest.bnr'  # unsure of the output format
+if os.path.isfile(args.header_file):
+    print("~ Input header file is: {}".format(args.header_file))
+    header_filein = args.header_file
+else:
+    raise ValueError('Input header file (.hdr) not found!')
 
+# maybe change below to delete the existing file or to allow overwrite?
+if (os.path.isfile(args.out_filename + '.bnr') or
+   os.path.isfile(args.out_filename + '.mat') or
+   os.path.isfile(args.out_filename + '.npz')):
+    raise ValueError('Output already exists! Aborting')
+else:
+    outfilename = args.out_filename
+
+# ----------------------------
 # Populate variables (some hard coded? why? -> this will need to change)
 # again the extraction of vars from mat file will need to change
-# as there must be a more elegant way
+# as there must be a more elegant way (class that is populated)
 
-params_in_hfdr = loadmat(params_path_infile)
+params_in_hfdr = loadmat(params_filein)
 
 NCHAN = np.int(params_in_hfdr['Ant'])  # number of dtacq A/D channel pairs
 NANT = np.int(params_in_hfdr['Ant'])  # WERA number of antennas (WHY IS SAME
@@ -151,19 +194,19 @@ fi.seek(new_pos, 0)
 # Prepare header and output file:
 # get time of acquisition for header
 
-ft = open(time_path_infile, 'r')  # may not be a binary file: switched to r
+ft = open(time_filein, 'r')  # may not be a binary file: switched to r
 timed = ft.read()
 ft.close()
 
 # get WERA header
 
-fh = open(header_path_infile, 'r')  # does not seem to be binary file?!
+fh = open(header_filein, 'r')  # does not seem to be binary file?!
 header = fh.read()
 fh.close()
 
 # write header to output file
 
-fo = open(rawout_filename, 'wb')  # supposed to be bin or text?? I think bin
+fo = open(outfilename + '.bnr', 'wb')  # supposed to be bin or txt? I think bin
 fo.write((HEADTAG + timed + header).encode('ascii'))  # not sure it will work
 
 # read, manipulate, and write data
@@ -192,12 +235,12 @@ for ichirp in range(1, NCHIRP):
         wera1[map[ichan, 3], :, map[ichan, 2]] = chirp_prep(sdata[ichan, :], MT)
         werac[map[ichan, 3], :, map[ichan, 2]] = chirp_prep(datac[ichan, :], MTC)
     wera[..., ichirp] = werac  # store compressed data in 'wera'
-    fo.write(wera1)  # write out data to RAW output file
+    fo.write(wera1)  # write out data to RAW bin output file
 fo.close()
 fi.close()
 
 # ----------------------------------------------------
 # Write the output mat (npz) file
 
-savemat(rawout_filename[:-3] + 'mat', wera=wera)
-np.savez_compressed(rawout_filename[:-3] + 'npz', wera=wera)
+savemat(outfilename + '.mat', wera=wera)
+np.savez_compressed(outfilename + '.npz', wera=wera)
