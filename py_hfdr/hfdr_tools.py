@@ -19,6 +19,10 @@ class configs:
         print("Setting config vars in " + self.name + " to defaults.")
 
 
+def read_raw_compressed():
+    '''Reads a compressed raw file (.npz/.mat)'''
+
+
 def main():
     print("This is a module to be imported only.")
 
