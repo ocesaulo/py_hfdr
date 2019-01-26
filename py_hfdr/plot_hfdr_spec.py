@@ -8,7 +8,7 @@
 import numpy as np
 
 
-def main():
+def main(arg):
     '''Either imported or excuted, read raw compressed file passed as arg and
     do standard plots.
     '''
@@ -16,4 +16,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    main(sys.argv)
