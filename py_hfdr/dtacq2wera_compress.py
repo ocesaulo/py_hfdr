@@ -26,6 +26,7 @@
 import os
 import argparse
 # import sys
+import time
 import numpy as np
 from scipy import signal
 from scipy.io import loadmat, savemat
@@ -34,6 +35,9 @@ from hfdr_tools import Configs
 
 # ----------------------------------------------
 # local functions (may rethink and go into a module to be imported)
+
+start_time = time.time()
+
 
 def load_map(IQORDER):
     ''' Make map for channel remapping '''
@@ -255,4 +259,5 @@ fi.close()
 # Write the output mat (npz) file
 
 np.savez_compressed(outfilename + '.npz', wera=wera, proc_configs=site_conf)
-savemat(outfilename + '.mat', wera=wera)
+print("--- %s seconds ---" % (time.time() - start_time))
+# savemat(outfilename + '.mat', wera=wera)
