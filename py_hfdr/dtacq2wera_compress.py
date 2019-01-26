@@ -18,6 +18,8 @@
  TODO: Improve error handling in argument passing and checks. Currently if the
  output files exist abort.
 
+ TODO: try CYTHON to make loop and arrays faster.
+
  Author: Saulo M. Soares
 """
 
@@ -27,6 +29,7 @@ import argparse
 import numpy as np
 from scipy import signal
 from scipy.io import loadmat, savemat
+from hfdr_tools import Configs
 
 
 # ----------------------------------------------
@@ -130,6 +133,12 @@ if os.path.isfile(args.header_file):
 else:
     raise ValueError('Input header file (.hdr) not found!')
 
+if args.config_file is not None:
+    if os.path.isfile(args.config_file):
+        print("~ Input proc. config file is: {}".format(args.config_file))
+    else:
+        raise ValueError('Input config file (.txt) not found!')
+
 # maybe change below to delete the existing file or to allow overwrite?
 if (os.path.isfile(args.out_filename + '.bnr') or
    os.path.isfile(args.out_filename + '.mat') or
@@ -139,49 +148,44 @@ else:
     outfilename = args.out_filename
 
 # ----------------------------
-# Populate variables (some hard coded? why? -> this will need to change)
-# again the extraction of vars from mat file will need to change
-# as there must be a more elegant way (class that is populated)
+# Populate variables using the new class
 
 params_in_hfdr = loadmat(params_filein)
 
-NCHAN = np.int(params_in_hfdr['Ant'])  # number of dtacq A/D channel pairs
-NANT = np.int(params_in_hfdr['Ant'])  # WERA number of antennas (WHY IS SAME
-#                                        AS ABOVE/IS IT ALWAYS?
-MT = np.int(params_in_hfdr['MT'])  # number of WERA samples per chirp 1920
-#                                     (tipical high res) or 3072 (typical
-#                                      long range)
+if args.config_file is None:
+    site_conf = Configs(params_in_hfdr)
+else:
+    site_conf = Configs(params_in_hfdr, config_file=args.config_file)
 
-IQ = 2  # number of channels to make a pair
-OVER = 2  # dtacq oversampling rate
-NCHIRP = 2048  # number of chirps
-SKIP = 1  # number of chirps skipped
-COMP_FAC = 8  # extra compression factor
-FIRSKIP = 28  # no of samples skipped before first chirp due to FIR transcient
-SHIFT_POS = COMP_FAC * 20 * 2  # total no of samples to add to chirp for clean filtering
-# %SHIFT = 16  # number of bits lost when converting 32->16 bits
-SHIFT = 18
-HEADTAG = '2048 SAMPLES   '  # part of the header necessary
-IQORDER = 'radcelf'  # ordering of I and Q channels; use 'norm' or 'swap'
+NCHAN = site_conf.vars.NCHAN  # number of dtacq A/D channel pairs
+NANT = site_conf.vars.NANT  # WERA number of antennas, WHY IS SAME AS ABOVE/IS IT ALWAYS?
+MT = site_conf.vars.MT  # number of WERA samples per chirp 1920 (tipical high res) or 3072 (typical long range)
 
-MTL = MT + SHIFT_POS // OVER  # need care that this being int and rounded right
+IQ = site_conf.vars.IQ  # number of channels to make a pair
+OVER = site_conf.vars.OVER  # dtacq oversampling rate
+NCHIRP = site_conf.vars.NCHIRP  # number of chirps
+SKIP = site_conf.vars.SKIP  # number of chirps skipped
+COMP_FAC = site_conf.vars.COMP_FAC  # extra compression factor
+FIRSKIP = site_conf.vars.FIRSKIP  # no of samples skipped before first chirp due to FIR transcient
+SHIFT_POS = site_conf.vars.SHIFT_POS  # total no of samples to add to chirp for clean filtering
+SHIFT = site_conf.vars.SHIFT  # number of bits lost when converting 32->16 bits
+HEADTAG = site_conf.vars.HEADTAG  # part of the header necessary
+IQORDER = site_conf.vars.IQORDER  # ordering of I and Q channels; use 'norm' or 'swap'
 
-MTCL = np.int(np.ceil(MTL / COMP_FAC))
-MTC = np.int(np.ceil(MT / COMP_FAC))
+MTL = site_conf.vars.MTL  # need care that this being int and rounded right
+MTCL = site_conf.vars.MTCL
+MTC = site_conf.vars.MTC
 
-map = load_map(IQORDER)  # call to local function load_map, set map array
+map = load_map(IQORDER)  # call to local function load_map, set map array (move into class)
 
 # --------------------------------------------------
 # Open and prepare input file
-# again needs to revise
 
-# fi = open(dta_filein, 'r', 'ieee-le')
-fi = open(dta_filein, 'rb')
-# or do this:
-# fi_np = np.fromfile(dta_filein, dtype='<f4', count=-1)
+fi = open(dta_filein, 'rb')  # fi = open(dta_filein, 'r', 'ieee-le')
+# or do this: fi_np = np.fromfile(dta_filein, dtype='<f4', count=-1)
 
 # fseek(fi, 0, 'eof')  # this indicates we go to end of file, with zero offset
-fi.seek(0, 2)  # trying to reproduce this
+fi.seek(0, 2)  # trying to reproduce that
 
 # Check the size of the file:
 pos = fi.tell()
@@ -215,7 +219,7 @@ fh.close()
 fo = open(outfilename + '.bnr', 'wb')  # supposed to be bin or txt? I think bin
 fo.write((HEADTAG + timed + header).encode('ascii'))  # not sure it will work
 
-# read, manipulate, and write data
+# read, manipulate, and write data (CYTHONIZE!)
 
 wera = np.zeros((IQ, MTC, NANT, NCHIRP), dtype=np.int16)
 
@@ -238,10 +242,10 @@ for ichirp in range(0, NCHIRP):
         sdata[ichan, :] = chirp_compress(data[ichan, :], OVER)
         datac[ichan, :] = chirp_compress(sdata[ichan, :], COMP_FAC)
         # reorder channels, shift bits, and move to int16 data
-        wera1[map[ichan, 2], :, map[ichan, 1]] = chirp_prep(sdata[ichan, :],
-                                                            MT, SHIFT, SHIFT_POS)
-        werac[map[ichan, 2], :, map[ichan, 1]] = chirp_prep(datac[ichan, :],
-                                                            MTC, SHIFT, SHIFT_POS)
+        i0 = map[ichan, 2]
+        i2 = map[ichan, 1]
+        wera1[i0, :, i2] = chirp_prep(sdata[ichan, :], MT, SHIFT, SHIFT_POS)
+        werac[i0, :, i2] = chirp_prep(datac[ichan, :], MTC, SHIFT, SHIFT_POS)
     wera[..., ichirp] = werac  # store compressed data in 'wera'
     fo.write(wera1)  # write out data to RAW bin output file
 fo.close()
@@ -250,5 +254,5 @@ fi.close()
 # ----------------------------------------------------
 # Write the output mat (npz) file
 
+np.savez_compressed(outfilename + '.npz', wera=wera, proc_configs=site_conf)
 savemat(outfilename + '.mat', wera=wera)
-np.savez_compressed(outfilename + '.npz', wera=wera)
