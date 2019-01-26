@@ -52,7 +52,7 @@ def load_map(IQORDER):
     map[:, 0] = np.r_[1:8 * 2 + 1]
     map[:, 1] = DDS_OUT.T.ravel()  # will break, as var only exists in one cond
     map[:, 2] = IQCHAN
-    return map
+    return map - 1
 
 
 def chirp_compress(chirp_in, compression_factor):
@@ -69,11 +69,13 @@ def chirp_compress(chirp_in, compression_factor):
 
 
 def chirp_prep(chirp_in, len_end, SHIFT, SHIFT_POS):
-    '''global SHIFT SHIFT_POS'''
+    '''size it right? not sure what this is doing'''
 
     d = np.max(chirp_in.shape)
-    start_spot = (d - len_end) // 2 + 1
-    end_spot = start_spot + len_end - 1
+    # start_spot = (d - len_end) // 2 + 1  # indexing is likely off (matlab)
+    start_spot = (d - len_end) // 2
+    # end_spot = start_spot + len_end - 1  # indexing is likely off
+    end_spot = start_spot + len_end
     chirp_int = chirp_in // (2**SHIFT)
     return np.int16(chirp_int[start_spot:end_spot])
 
