@@ -33,34 +33,11 @@ from scipy.io import loadmat, savemat
 from hfdr_tools import Configs
 
 
-# ----------------------------------------------
-# local functions (may rethink and go into a module to be imported)
-
 start_time = time.time()
 
 
-def load_map(IQORDER):
-    ''' Make map for channel remapping '''
-
-    if IQORDER == 'norm':
-        IQCHAN = np.r_[np.ones((8, 1)), 2 * np.ones((8, 1)), np.ones((8, 1)),
-                       2 * np.ones((8, 1))]
-    elif IQORDER == 'swap':
-        IQCHAN = np.r_[2 * np.ones((8, 1)), np.ones((8, 1)),
-                       2 * np.ones((8, 1)), np.ones((8, 1))]
-    elif IQORDER == 'radcelf':
-        IQCHAN = np.reshape(np.r_[np.ones((1, 8)), 2 * np.ones((1, 8))],
-                            8 * 2, 1)
-        DDS_OUT = np.array([np.arange(1, 9), np.arange(1, 9)])
-    else:
-        raise ValueError('Incorrect choice for IQORDER')
-
-    map = np.zeros((8 * 2, 3), dtype=np.int)
-    map[:, 0] = np.r_[1:8 * 2 + 1]
-    map[:, 1] = DDS_OUT.T.ravel()  # will break, as var only exists in one cond
-    map[:, 2] = IQCHAN
-    return map - 1
-
+# ----------------------------------------------
+# local functions (may rethink and go into a module to be imported/CYTHON here)
 
 def chirp_compress(chirp_in, compression_factor):
     '''window, decimate and unapply window to chirp'''
@@ -180,7 +157,8 @@ MTL = site_conf.vars.MTL  # need care that this being int and rounded right
 MTCL = site_conf.vars.MTCL
 MTC = site_conf.vars.MTC
 
-map = load_map(IQORDER)  # call to local function load_map, set map array (move into class)
+map = site_conf.vars.MAP  # call to local function load_map, set map array
+# map = load_map(IQORDER)  # call to local function load_map, set map array (move into class)
 
 # --------------------------------------------------
 # Open and prepare input file

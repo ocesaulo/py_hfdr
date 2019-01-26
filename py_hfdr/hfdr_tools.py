@@ -32,7 +32,7 @@ class Configs:
         self.vars.MTL = self.vars.MT + self.vars.SHIFT_POS // self.vars.OVER
         self.vars.MTCL = np.int(np.ceil(self.vars.MTL / self.vars.COMP_FAC))
         self.vars.MTC = np.int(np.ceil(self.vars.MT / self.vars.COMP_FAC))
-        # self.map = load_map(IQORDER)  # call to local function load_map, set map array
+        self.MAP = load_map(self.vars.IQORDER)  # call to local func load_map, set map array
 
     class Vars:
         pass
@@ -52,6 +52,29 @@ class Configs:
         self.vars.SHIFT_POS = self.vars.COMP_FAC * 20 * 2
         self.vars.HEADTAG = '2048 SAMPLES   '
         self.vars.IQORDER = 'radcelf'
+
+
+def load_map(IQORDER):
+    ''' Make map for channel remapping '''
+
+    if IQORDER == 'norm':
+        IQCHAN = np.r_[np.ones((8, 1)), 2 * np.ones((8, 1)), np.ones((8, 1)),
+                       2 * np.ones((8, 1))]
+    elif IQORDER == 'swap':
+        IQCHAN = np.r_[2 * np.ones((8, 1)), np.ones((8, 1)),
+                       2 * np.ones((8, 1)), np.ones((8, 1))]
+    elif IQORDER == 'radcelf':
+        IQCHAN = np.reshape(np.r_[np.ones((1, 8)), 2 * np.ones((1, 8))],
+                            8 * 2, 1)
+        DDS_OUT = np.array([np.arange(1, 9), np.arange(1, 9)])
+    else:
+        raise ValueError('Incorrect choice for IQORDER')
+
+    map = np.zeros((8 * 2, 3), dtype=np.int)
+    map[:, 0] = np.r_[1:8 * 2 + 1]
+    map[:, 1] = DDS_OUT.T.ravel()  # will break, as var only exists in one cond
+    map[:, 2] = IQCHAN
+    return map - 1
 
 
 def read_raw_compressed():
