@@ -5,6 +5,7 @@
 
 # Setuptools distribution folder.
 /dist/
+/py_hfdr/build/
 
 # Python egg metadata, regenerated from source files by setuptools.
 /*.egg-info
