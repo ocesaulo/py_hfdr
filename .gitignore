@@ -1,5 +1,7 @@
 # Compiled python modules.
 *.pyc
+/py_hfdr/fast_chirp_handling.c
+/py_hfdr/fast_chirp_handling.html
 
 # Setuptools distribution folder.
 /dist/
