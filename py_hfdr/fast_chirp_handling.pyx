@@ -6,34 +6,34 @@
 
 import numpy as np
 from scipy import signal
-import ctypes as ct
+# import ctypes as ct
 cimport numpy as np
 cimport cython
 
 
-def chirp_compress(double[:, :] chirp_in, int compression_factor):
+def chirp_compress(np.ndarray[np.double_t, ndim=1] chirp_in, int compression_factor):
     '''window, decimate and unapply window to chirp'''
 
-    cdef int d = np.max(chirp_in.shape)
-    cdef double[:] w = signal.windows.blackmanharris(d).T
-    cdef double w1
-    cdef double wc
-    cdef double dc
+    cdef int d = np.max((chirp_in.shape[0], chirp_in.shape[1]))
+    cdef np.ndarray[np.double_t, ndim=1] w = signal.windows.blackmanharris(d).T
+    cdef np.ndarray[np.double_t, ndim=1] w1
+    cdef np.ndarray[np.double_t, ndim=1] wc
+    cdef np.ndarray[np.double_t, ndim=1] dc
     w1 = signal.windows.blackmanharris(
                                        np.int(np.ceil(d / compression_factor))
                                        ).T
-    wc = np.asarray(chirp_in) * np.asarray(w)
+    wc = chirp_in * w
     dc = signal.decimate(wc, compression_factor)
     return dc / w1
 
 
-def chirp_prep(double[:, :] chirp_in, int len_end, int SHIFT, int SHIFT_POS):
+def chirp_prep(np.ndarray[np.double_t, ndim=1] chirp_in, int len_end, int SHIFT, int SHIFT_POS):
     '''edit chirp'''
 
-    cdef int d = np.max(chirp_in.shape)
+    cdef int d = np.max((chirp_in.shape[0], chirp_in.shape[1]))
     cdef int start_spot = (d - len_end) // 2
     cdef int end_spot = start_spot + len_end
-    cdef short[:, :] chirp_int = np.asrray(chirp_in) / (2**SHIFT)
+    cdef np.ndarray[np.int16_t, ndim=1] chirp_int = np.int16(chirp_in / (2**SHIFT))
     return chirp_int[start_spot:end_spot]
 
 
@@ -53,30 +53,31 @@ def loop_chirps(fi, fo, site_conf):
     cdef int SHIFT_POS = site_conf.vars.SHIFT_POS
     cdef int SHIFT = site_conf.vars.SHIFT
     cdef int COMP_FAC = site_conf.vars.COMP_FAC
-    cdef int[:, :, :] map = site_conf.map
+    cdef long[:, :] map = site_conf.MAP
 
-    cdef short[:, :, :, :] wera = np.zeros((IQ, MTC, NANT, NCHIRP), dtype=ct.c_int16)
+    cdef np.ndarray[np.int16_t, ndim=4] wera = np.zeros((IQ, MTC, NANT, NCHIRP), dtype=np.short)
 
     cdef int i0, i2
-    cdef int indata
-    cdef double[:, :] data
-    cdef double[:, :] sdata
-    cdef double[:, :] datac
-    cdef short[:, :, :] wera1
-    cdef short[:, :, :] werac
+    cdef int[:] indata
+    cdef np.ndarray[np.float64_t, ndim=2] data
+    cdef np.ndarray[np.float64_t, ndim=2] sdata
+    cdef np.ndarray[np.float64_t, ndim=2] datac
+    cdef np.ndarray[np.int16_t, ndim=3] wera1
+    cdef np.ndarray[np.int16_t, ndim=3] werac
 
     for ichirp in range(0, NCHIRP):
 
         # initialize variables per chirp
-        sdata = np.zeros((NCHAN * IQ, MTL), dtype=ct.c_float64)
-        datac = np.zeros((NCHAN * IQ, MTCL), dtype=ct.c_float64)
-        wera1 = np.zeros((IQ, MT, NANT), dtype=ct.c_int16)
-        werac = np.zeros((IQ, MTC, NANT), dtype=ct.c_int16)
+        sdata = np.zeros((NCHAN * IQ, MTL))
+        datac = np.zeros((NCHAN * IQ, MTCL))
+        wera1 = np.zeros((IQ, MT, NANT), dtype=np.short)
+        werac = np.zeros((IQ, MTC, NANT), dtype=np.short)
 
         #  move back a bit in file to extend chirp so filter works cleanly
         fi.seek(-4 * NCHAN * IQ * SHIFT_POS, 1)
-        indata = np.fromfile(fi, ct.c_int32, NCHAN * IQ * (MT * OVER + SHIFT_POS))
-        data = indata.reshape((NCHAN * IQ, MT * OVER + SHIFT_POS)).astype(ct.c_float64)
+        indata = np.fromfile(fi, np.int32, NCHAN * IQ * (MT * OVER + SHIFT_POS))
+        # data = indata.reshape((NCHAN * IQ, MT * OVER + SHIFT_POS)).astype(ct.c_double)
+        data = np.reshape(np.float64(indata), (NCHAN * IQ, MT * OVER + SHIFT_POS))
 
         # manipulate data for each channel
         for ichan in range(0, NANT * IQ):

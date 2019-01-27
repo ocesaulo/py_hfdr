@@ -28,41 +28,13 @@ import argparse
 # import sys
 import time
 import numpy as np
-from scipy import signal
+# from scipy import signal
 from scipy.io import loadmat, savemat
 from hfdr_tools import Configs
+from fast_chirp_handling import loop_chirps
 
 
 start_time = time.time()
-
-
-# ----------------------------------------------
-# local functions (may rethink and go into a module to be imported/CYTHON here)
-
-def chirp_compress(chirp_in, compression_factor):
-    '''window, decimate and unapply window to chirp'''
-
-    d = np.max(chirp_in.shape)
-    w = signal.windows.blackmanharris(d).T
-    w1 = signal.windows.blackmanharris(
-                                       np.int(np.ceil(d / compression_factor))
-                                       ).T
-    wc = chirp_in * w
-    dc = signal.decimate(wc, compression_factor)
-    return dc / w1
-
-
-def chirp_prep(chirp_in, len_end, SHIFT, SHIFT_POS):
-    '''size it right? not sure what this is doing'''
-
-    d = np.max(chirp_in.shape)
-    # start_spot = (d - len_end) // 2 + 1  # indexing is likely off (matlab)
-    start_spot = (d - len_end) // 2
-    # end_spot = start_spot + len_end - 1  # indexing is likely off
-    end_spot = start_spot + len_end
-    chirp_int = chirp_in // (2**SHIFT)
-    return np.int16(chirp_int[start_spot:end_spot])
-
 
 # ----------------------------
 # Read in input files
@@ -203,33 +175,8 @@ fo.write((HEADTAG + timed + header).encode('ascii'))  # not sure it will work
 
 # read, manipulate, and write data (CYTHONIZE!)
 
-wera = np.zeros((IQ, MTC, NANT, NCHIRP), dtype=np.int16)
+wera = loop_chirps(fi, fo, site_conf)
 
-for ichirp in range(0, NCHIRP):
-
-    #  move back a bit in file to extend chirp so filter works cleanly
-    fi.seek(-4 * NCHAN * IQ * SHIFT_POS, 1)
-    data = np.fromfile(fi, np.int32, NCHAN * IQ * (MT * OVER + SHIFT_POS))
-    data = data.reshape((NCHAN * IQ, MT * OVER + SHIFT_POS)).astype(np.float64)
-
-    # initialize variables per chirp
-    sdata = np.float64(np.zeros((NCHAN * IQ, MTL)))
-    datac = np.float64(np.zeros((NCHAN * IQ, MTCL)))
-    wera1 = np.int16(np.zeros((IQ, MT, NANT)))
-    werac = np.int16(np.zeros((IQ, MTC, NANT)))
-
-    # manipulate data for each channel
-    for ichan in range(0, NANT * IQ):
-        # window, decimate, and unwindow
-        sdata[ichan, :] = chirp_compress(data[ichan, :], OVER)
-        datac[ichan, :] = chirp_compress(sdata[ichan, :], COMP_FAC)
-        # reorder channels, shift bits, and move to int16 data
-        i0 = map[ichan, 2]
-        i2 = map[ichan, 1]
-        wera1[i0, :, i2] = chirp_prep(sdata[ichan, :], MT, SHIFT, SHIFT_POS)
-        werac[i0, :, i2] = chirp_prep(datac[ichan, :], MTC, SHIFT, SHIFT_POS)
-    wera[..., ichirp] = werac  # store compressed data in 'wera'
-    fo.write(wera1)  # write out data to RAW bin output file
 fo.close()
 fi.close()
 
@@ -237,5 +184,5 @@ fi.close()
 # Write the output mat (npz) file
 
 np.savez_compressed(outfilename + '.npz', wera=wera, proc_configs=site_conf)
-savemat(outfilename + '.mat', data={'wera': wera, 'proc_configs': site_conf})
+savemat(outfilename + '.mat', {'wera': wera, 'proc_configs': site_conf})
 print("--- %s seconds ---" % (time.time() - start_time))
