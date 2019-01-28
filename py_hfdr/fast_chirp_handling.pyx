@@ -1,5 +1,7 @@
 '''
  Cythonized version of chirp handling functions and main loop.
+ Need check if actually optimized... maybe array index is bad
+ But profiling indicates that the scipy calls are the bottleneck
  Author: Saulo M Soares
 '''
 
