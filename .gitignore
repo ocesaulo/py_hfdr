@@ -2,6 +2,7 @@
 *.pyc
 /py_hfdr/fast_chirp_handling.c
 /py_hfdr/fast_chirp_handling.html
+/py_hfdr/profile.dat
 
 # Setuptools distribution folder.
 /dist/
