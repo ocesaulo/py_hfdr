@@ -6,6 +6,7 @@
 
 
 import numpy as np
+from hfdr_tools import read_raw_compressed
 
 
 def main(arg):
@@ -13,6 +14,13 @@ def main(arg):
     do standard plots.
     '''
     print("Template figures, do the plots and save figures of raw radar data.")
+    print("plots for file: " + arg)
+    rawdata, configs = read_raw_compressed(arg)
+    nant = configs.vars.NANT
+
+
+def set_default_fig_layout():
+    '''Set layout of output figures using defaults, return handles for mods'''
 
 
 if __name__ == "__main__":

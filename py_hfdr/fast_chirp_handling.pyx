@@ -20,14 +20,14 @@ def chirp_compress(double[:] chirp_in, int compression_factor):
 
     cdef int n
     cdef int d = np.max((chirp_in.shape[0], chirp_in.shape[1]))
-    cdef double[:] w = blackmanharris(d).T
-    cdef double[:] w1 = blackmanharris(np.int(np.ceil(d / compression_factor))).T
+    cdef double[:] w = blackmanharris(d)
+    cdef double[:] w1 = blackmanharris(np.int(np.ceil(d / compression_factor)))
     cdef double[:] wc = np.zeros((len(chirp_in),))
-    cdef double[:] dc
+
     # wc = chirp_in * w
     for n in range(len(chirp_in)):
         wc[n] = chirp_in[n] * w[n]
-    dc = decimate(wc, compression_factor)
+    cdef double[:] dc = decimate(wc, compression_factor)
     cdef double[:] result = np.zeros((len(dc),))
     for n in range(len(dc)):
         result[n] = dc[n] / w1[n]
@@ -70,7 +70,7 @@ def loop_chirps(fi, fo, site_conf):
     cdef int COMP_FAC = site_conf.vars.COMP_FAC
     cdef long[:, :] map = site_conf.MAP
 
-    cdef short[:, :, :, :] wera = np.zeros((IQ, MTC, NANT, NCHIRP), dtype=np.short)
+    cdef short[:, :, :, :] wera = np.empty((IQ, MTC, NANT, NCHIRP), dtype=np.short)
 
     cdef int i0, i2, k
     cdef int[:] indata
@@ -87,26 +87,29 @@ def loop_chirps(fi, fo, site_conf):
     for ichirp in range(0, NCHIRP):
 
         # initialize variables per chirp
-        sdata = np.zeros((NCHAN * IQ, MTL))
-        datac = np.zeros((NCHAN * IQ, MTCL))
-        wera1 = np.zeros((IQ, MT, NANT), dtype=np.short)
-        werac = np.zeros((IQ, MTC, NANT), dtype=np.short)
+        sdata = np.empty((NCHAN * IQ, MTL))
+        datac = np.empty((NCHAN * IQ, MTCL))
+        wera1 = np.empty((IQ, MT, NANT), dtype=np.short)
+        werac = np.empty((IQ, MTC, NANT), dtype=np.short)
 
         #  move back a bit in file to extend chirp so filter works cleanly
         fi.seek(-4 * NCHAN * IQ * SHIFT_POS, 1)
         indata = np.fromfile(fi, np.int32, NCHAN * IQ * (MT * OVER + SHIFT_POS))
         # data = indata.reshape((NCHAN * IQ, MT * OVER + SHIFT_POS)).astype(ct.c_double)
         data = np.reshape(np.float64(indata), (NCHAN * IQ, MT * OVER + SHIFT_POS))
+        # print(data.base)
 
         # manipulate data for each channel
         for ichan in range(0, NANT * IQ):
             # window, decimate, and unwindow
             out1 = chirp_compress(data[ichan, :], OVER)
+            # print(out1.base)
             out2 = chirp_compress(sdata[ichan, :], COMP_FAC)
+            # print(out2.base)
             for k in range(MTL):
-                sdata[ichan, k] = out1[k]
+                sdata[ichan, k] = out1.base[k]
             for k in range(MTCL):
-                datac[ichan, k] = out2[k]
+                datac[ichan, k] = out2.base[k]
             # sdata[ichan, :] = chirp_compress(data[ichan, :], OVER)
             # datac[ichan, :] = chirp_compress(sdata[ichan, :], COMP_FAC)
 
@@ -114,13 +117,17 @@ def loop_chirps(fi, fo, site_conf):
             i0 = np.intc(map[ichan, 2])
             i2 = np.intc(map[ichan, 1])
             out3 = chirp_prep(sdata[ichan, :], MT, SHIFT, SHIFT_POS)
+            # print(out3.base)
             out4 = chirp_prep(datac[ichan, :], MTC, SHIFT, SHIFT_POS)
+            # print(out4.base)
             for k in range(MT):
-                wera1[i0, k, i2] = out3[k]
+                wera1[i0, k, i2] = out3.base[k]
             for k in range(MTC):
-                werac[i0, k, i2] = out4[k]
+                werac[i0, k, i2] = out4.base[k]
             # wera1[i0, :, i2] = chirp_prep(sdata[ichan, :], MT, SHIFT, SHIFT_POS)
             # werac[i0, :, i2] = chirp_prep(datac[ichan, :], MTC, SHIFT, SHIFT_POS)
-        wera[..., ichirp] = werac  # store compressed data in 'wera'
+        # print(werac.base.shape)
+        # print(wera.base.shape)
+        wera.base[..., ichirp] = werac.base  # store compressed data in 'wera'
         fo.write(wera1)  # write out data to RAW bin output file
-    return wera
+    return wera.base

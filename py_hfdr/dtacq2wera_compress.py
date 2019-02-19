@@ -129,7 +129,7 @@ MTL = site_conf.vars.MTL  # need care that this being int and rounded right
 MTCL = site_conf.vars.MTCL
 MTC = site_conf.vars.MTC
 
-map = site_conf.MAP  # call to local function load_map, set map array
+# Map = site_conf.MAP  # call to local function load_map, set map array
 # map = load_map(IQORDER)  # call to local function load_map, set map array (move into class)
 
 # --------------------------------------------------

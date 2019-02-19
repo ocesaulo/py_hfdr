@@ -6,7 +6,11 @@
 """
 
 
+import os
 import numpy as np
+from scipy.signal import decimate
+from scipy.signal.windows import blackmanharris
+from scipy.io import loadmat
 
 
 class Configs:
@@ -39,6 +43,7 @@ class Configs:
 
     def set_configs(self, config_file):
         print("This will overwrite defaults for " + self.name + " configs.")
+        print("Not coded yet...")
 
     def set_defaults(self):
         print("Setting config vars in " + self.name + " to defaults.")
@@ -81,29 +86,35 @@ def chirp_compress(chirp_in, compression_factor):
     '''window, decimate and unapply window to chirp'''
 
     d = np.max(chirp_in.shape)
-    w = signal.windows.blackmanharris(d).T
-    w1 = signal.windows.blackmanharris(
-                                       np.int(np.ceil(d / compression_factor))
-                                       ).T
+    w = blackmanharris(d).T
+    w1 = blackmanharris(np.int(np.ceil(d / compression_factor))).T
     wc = chirp_in * w
-    dc = signal.decimate(wc, compression_factor)
+    dc = decimate(wc, compression_factor)
     return dc / w1
 
 
 def chirp_prep(chirp_in, len_end, SHIFT, SHIFT_POS):
-    '''size it right? not sure what this is doing'''
+    '''clip chirp array and set it to int16'''
 
     d = np.max(chirp_in.shape)
     # start_spot = (d - len_end) // 2 + 1  # indexing is likely off (matlab)
     start_spot = (d - len_end) // 2
     # end_spot = start_spot + len_end - 1  # indexing is likely off
     end_spot = start_spot + len_end
-    chirp_int = chirp_in // (2**SHIFT)
-    return np.int16(chirp_int[start_spot:end_spot])
+    chirp_out = chirp_in / (2**SHIFT)
+    return chirp_out[start_spot:end_spot].astype(np.int16)
 
 
-def read_raw_compressed():
-    '''Reads a compressed raw file (.npz/.mat)'''
+def read_raw_compressed(filename):
+    '''Reads a compressed raw file (.npz/.mat), outputs double precision'''
+    if os.path.isfile(filename):
+        pass
+    if filename[:3] == 'npz':
+        rawdata = np.load(filename)
+    elif filename[:3] == 'mat':
+        rawdata = loadmat(filename)
+    else:
+        raise ValueError('Incorrect compressed raw file type')
 
 
 def main():
