@@ -102,7 +102,7 @@ else:
 # ----------------------------
 # Populate variables using the new class
 
-params_in_hfdr = loadmat(params_filein)
+params_in_hfdr = loadmat(params_filein, squeeze_me=True)
 
 if args.config_file is None:
     site_conf = Configs(params_in_hfdr)
@@ -210,6 +210,6 @@ fi.close()
 # ----------------------------------------------------
 # Write the output mat (npz) file
 
-np.savez_compressed(outfilename + '.npz', wera=wera, proc_configs=site_conf)
+np.savez_compressed(outfilename + '.npz', wera=wera, proc_configs=[site_conf, ])
 savemat(outfilename + '.mat', {'wera': wera, 'proc_configs': site_conf})
 print("--- %s seconds ---" % (time.time() - start_time))
