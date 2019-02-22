@@ -24,6 +24,7 @@ def main(arg):
     rawdata, confs = read_raw_compressed(arg)
     Frq, Rng, DSA, PHA = spectra_raw_compressed(rawdata, confs)
     filename = os.path.basename(arg)
+    dirofinput = os.path.dirname(arg)
 
     Rang_lim = confs.vars.Nranges * confs.vars.res / 1e3
     Nant = confs.vars.NANT
@@ -45,7 +46,7 @@ def main(arg):
     clb.ax.set_title('[db]')
     plt.annotate(s=info, xy=(.75, .025), xycoords='figure fraction')
     plt.annotate(s=date_stamp, xy=(.08, .025), xycoords='figure fraction')
-    plt.savefig('../data/test_fig.png', bbox_inches='tight')
+    plt.savefig(dirofinput + '/' + filename[:-3] + 'png', bbox_inches='tight')
 
 
 def set_fig_layout(Nant, width=11., height=8.5):
